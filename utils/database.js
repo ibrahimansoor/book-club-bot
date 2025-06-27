@@ -90,6 +90,11 @@ class Database {
     // Helper method to run SQL queries
     run(sql, params = []) {
         return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error('Database not initialized'));
+                return;
+            }
+            
             this.db.run(sql, params, function(err) {
                 if (err) {
                     console.error('Database error:', err);
@@ -104,6 +109,11 @@ class Database {
     // Helper method to get single row
     get(sql, params = []) {
         return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error('Database not initialized'));
+                return;
+            }
+            
             this.db.get(sql, params, (err, row) => {
                 if (err) {
                     console.error('Database error:', err);
@@ -118,6 +128,11 @@ class Database {
     // Helper method to get all rows
     all(sql, params = []) {
         return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error('Database not initialized'));
+                return;
+            }
+            
             this.db.all(sql, params, (err, rows) => {
                 if (err) {
                     console.error('Database error:', err);
@@ -131,8 +146,13 @@ class Database {
 
     // Guild Settings Methods
     async initializeGuild(guildId) {
-        const sql = `INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)`;
-        return await this.run(sql, [guildId]);
+        try {
+            const sql = `INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)`;
+            return await this.run(sql, [guildId]);
+        } catch (error) {
+            console.error(`Error initializing guild ${guildId}:`, error);
+            throw error;
+        }
     }
 
     async setReminderChannel(guildId, channelId) {
