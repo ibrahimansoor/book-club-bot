@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
@@ -58,16 +58,83 @@ if (fs.existsSync(eventsPath)) {
     }
 }
 
+// Auto-deploy commands function
+async function deployCommands() {
+    const commands = [];
+    
+    // Grab all command data
+    for (const [name, command] of client.commands) {
+        if ('data' in command) {
+            commands.push(command.data.toJSON());
+        }
+    }
+    
+    if (commands.length === 0) {
+        throw new Error('No commands found to deploy');
+    }
+    
+    // Deploy to Discord
+    const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+    
+    const data = await rest.put(
+        Routes.applicationCommands(process.env.CLIENT_ID),
+        { body: commands },
+    );
+    
+    console.log(`✅ Successfully deployed ${data.length} slash commands globally`);
+    
+    // List deployed commands
+    commands.forEach(command => {
+        console.log(`   • /${command.name} - ${command.description}`);
+    });
+    
+    return data;
+}
+
 // Initialize database when bot is ready
 client.once('ready', async () => {
     console.log(`📚 ${client.user.tag} is online and ready!`);
+    console.log(`🌐 Connected to ${client.guilds.cache.size} server(s)`);
     
+    // Set bot activity
+    client.user.setActivity('📚 Book Club discussions', { 
+        type: 4 // ActivityType.Custom in newer versions
+    });
+
     // Initialize database
-    await client.db.init();
-    console.log('✅ Database initialized');
+    try {
+        await client.db.init();
+        console.log('✅ Database initialized');
+    } catch (error) {
+        console.error('❌ Database initialization failed:', error);
+    }
+    
+    // Auto-deploy commands if environment variable is set
+    if (process.env.AUTO_DEPLOY_COMMANDS === 'true') {
+        console.log('🚀 Auto-deploying slash commands...');
+        try {
+            await deployCommands();
+            console.log('✅ Slash commands deployed successfully!');
+        } catch (error) {
+            console.error('❌ Failed to deploy slash commands:', error);
+        }
+    }
+    
+    // Initialize database for all guilds
+    for (const [guildId, guild] of client.guilds.cache) {
+        try {
+            await client.db.initializeGuild(guildId);
+            console.log(`📊 Initialized database for guild: ${guild.name}`);
+        } catch (error) {
+            console.error(`❌ Failed to initialize guild ${guild.name}:`, error);
+        }
+    }
     
     // Setup scheduled tasks
     setupScheduledTasks();
+    
+    console.log('🚀 Book Club Bot is fully operational!');
+    console.log('📚 Ready to track reading engagement and manage book clubs!');
 });
 
 // Scheduled Tasks
