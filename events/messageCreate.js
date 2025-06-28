@@ -9,10 +9,18 @@ module.exports = {
         // Only process guild messages
         if (!message.guild) return;
 
+        // Skip if database isn't initialized
+        if (!client.db || !client.engagementTracker) {
+            console.log('⚠️ Database or engagement tracker not initialized');
+            return;
+        }
+
         try {
             const guildId = message.guild.id;
             const userId = message.author.id;
             const username = message.member?.displayName || message.author.username;
+
+            console.log(`📝 Processing message from ${username}: "${message.content.substring(0, 50)}..."`);
 
             // Track the message for engagement
             const trackingResult = await client.engagementTracker.trackMessage(
@@ -23,8 +31,12 @@ module.exports = {
                 message.channel.id
             );
 
+            console.log(`📊 Tracking result for ${username}:`, trackingResult);
+
             // If message was tracked and earned points, send feedback
             if (trackingResult.tracked && trackingResult.points > 0) {
+                console.log(`✅ Successfully tracked message from ${username} for ${trackingResult.points} points`);
+                
                 // Send a subtle reaction to acknowledge the contribution
                 try {
                     await message.react('📚');
@@ -42,8 +54,8 @@ module.exports = {
                     console.log('Could not add reaction:', reactionError.message);
                 }
 
-                // Send occasional point notifications (to avoid spam)
-                const shouldNotify = Math.random() < 0.3; // 30% chance
+                // Send point notifications more frequently for testing
+                const shouldNotify = Math.random() < 0.7; // 70% chance for testing
                 
                 if (shouldNotify || trackingResult.points >= 8) {
                     const pointsEmoji = trackingResult.points >= 10 ? '🏆' : trackingResult.points >= 8 ? '⭐' : '📖';
@@ -75,12 +87,18 @@ module.exports = {
                         console.log('Could not send points notification:', replyError.message);
                     }
                 }
-
-                console.log(`📊 Tracked engagement: ${username} (+${trackingResult.points} points) in ${message.guild.name}`);
+            } else {
+                console.log(`❌ Message from ${username} NOT tracked. Reason:`, trackingResult.reason || 'Unknown reason');
+                
+                // Log the content analysis for debugging
+                if (trackingResult.reason === 'Not book-related content') {
+                    console.log(`📄 Message content: "${message.content}"`);
+                    console.log(`📏 Content length: ${message.content.length}`);
+                }
             }
 
         } catch (error) {
-            console.error('Error in messageCreate event:', error);
+            console.error('❌ Error in messageCreate event:', error);
         }
     },
 };
