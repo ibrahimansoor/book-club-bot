@@ -145,6 +145,12 @@ function setupScheduledTasks() {
         await sendDailyReminder();
     });
     
+    // Thursday book club reminder at 6 PM
+    cron.schedule('0 18 * * 4', async () => {
+        console.log('📚 Running Thursday book club reminder...');
+        await sendThursdayBookClubReminder();
+    });
+    
     // Weekly leaderboard on Sundays at 6 PM
     cron.schedule('0 18 * * 0', async () => {
         console.log('🏆 Generating weekly leaderboard...');
@@ -157,15 +163,24 @@ function setupScheduledTasks() {
 // Daily reading reminder function
 async function sendDailyReminder() {
     try {
+        console.log('📅 Starting daily reminder process...');
         const guilds = client.guilds.cache;
+        console.log(`📊 Processing ${guilds.size} guilds for daily reminders`);
         
         for (const [guildId, guild] of guilds) {
+            console.log(`📚 Processing guild: ${guild.name} (${guildId})`);
+            
             const currentBook = await client.db.getCurrentBook(guildId);
             const reminderChannel = await client.db.getReminderChannel(guildId);
+            
+            console.log(`📖 Current book: ${currentBook ? currentBook.title : 'None'}`);
+            console.log(`📢 Reminder channel: ${reminderChannel ? 'Configured' : 'Not configured'}`);
             
             if (currentBook && reminderChannel) {
                 const channel = guild.channels.cache.get(reminderChannel);
                 if (channel) {
+                    console.log(`📤 Sending daily reminder to channel: ${channel.name}`);
+                    
                     const embed = new EmbedBuilder()
                         .setTitle('📚 Daily Reading Reminder')
                         .setDescription(`Don't forget to read **${currentBook.title}** by **${currentBook.author}** today!`)
@@ -178,11 +193,62 @@ async function sendDailyReminder() {
                         .setTimestamp();
                     
                     await channel.send({ embeds: [embed] });
+                    console.log(`✅ Daily reminder sent to ${guild.name}`);
+                } else {
+                    console.log(`❌ Channel not found for guild: ${guild.name}`);
+                }
+            } else {
+                if (!currentBook) {
+                    console.log(`⚠️ No current book set for guild: ${guild.name}`);
+                }
+                if (!reminderChannel) {
+                    console.log(`⚠️ No reminder channel configured for guild: ${guild.name}`);
                 }
             }
         }
+        console.log('✅ Daily reminder process completed');
     } catch (error) {
-        console.error('Error sending daily reminder:', error);
+        console.error('❌ Error sending daily reminder:', error);
+    }
+}
+
+// Thursday book club reminder function
+async function sendThursdayBookClubReminder() {
+    try {
+        console.log('📚 Starting Thursday book club reminder process...');
+        const guilds = client.guilds.cache;
+        
+        for (const [guildId, guild] of guilds) {
+            console.log(`📚 Processing guild for Thursday reminder: ${guild.name}`);
+            
+            const currentBook = await client.db.getCurrentBook(guildId);
+            const reminderChannel = await client.db.getReminderChannel(guildId);
+            
+            if (currentBook && reminderChannel) {
+                const channel = guild.channels.cache.get(reminderChannel);
+                if (channel) {
+                    console.log(`📤 Sending Thursday reminder to channel: ${channel.name}`);
+                    
+                    const embed = new EmbedBuilder()
+                        .setTitle('📚 Thursday Book Club Reminder!')
+                        .setDescription(`It's Thursday! Time for our book club discussion! 📖`)
+                        .setColor('#e74c3c')
+                        .addFields(
+                            { name: '📖 Current Book', value: `**${currentBook.title}** by **${currentBook.author}**`, inline: true },
+                            { name: '🕕 Time', value: 'Join us for our weekly discussion!', inline: true },
+                            { name: '💬 Discussion', value: 'Share your thoughts, questions, and insights about this week\'s reading!', inline: false }
+                        )
+                        .setFooter({ text: 'Happy Reading and Discussing! 📚' })
+                        .setTimestamp();
+                    
+                    await channel.send({ embeds: [embed] });
+                    console.log(`✅ Thursday reminder sent to ${guild.name}`);
+                }
+            }
+        }
+        console.log('✅ Thursday book club reminder process completed');
+    } catch (error) {
+        console.error('❌ Error sending Thursday book club reminder:', error);
     }
 }
 

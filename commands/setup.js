@@ -27,6 +27,10 @@ module.exports = {
             subcommand
                 .setName('view')
                 .setDescription('View current bot configuration'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('test')
+                .setDescription('Test the reminder system'))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
     async execute(interaction) {
@@ -63,7 +67,7 @@ module.exports = {
 
                 if (updatedChannels.length === 0) {
                     return await interaction.editReply({
-                        content: '❌ Please specify at least one channel to configure.',
+                        content: '❌ Please specify at least one channel to configure.\n\n**Example:** `/setup channels reminders:#book-club-reminders`',
                     });
                 }
 
@@ -127,7 +131,59 @@ module.exports = {
                     inline: false
                 });
 
+                // Add setup instructions if channels are missing
+                if (!reminderChannel || !leaderboardChannel) {
+                    embed.addFields({
+                        name: '🔧 Setup Instructions',
+                        value: 'To get the bot working properly:\n1. Use `/setup channels reminders:#your-channel`\n2. Use `/setup channels leaderboard:#your-channel`\n3. Use `/setbook` to set a current book',
+                        inline: false
+                    });
+                }
+
                 await interaction.editReply({ embeds: [embed] });
+
+            } else if (subcommand === 'test') {
+                const reminderChannelId = await interaction.client.db.getReminderChannel(guildId);
+                const currentBook = await interaction.client.db.getCurrentBook(guildId);
+
+                if (!reminderChannelId) {
+                    return await interaction.editReply({
+                        content: '❌ No reminder channel configured! Please use `/setup channels reminders:#your-channel` first.',
+                    });
+                }
+
+                if (!currentBook) {
+                    return await interaction.editReply({
+                        content: '❌ No current book set! Please use `/setbook` to set a book first.',
+                    });
+                }
+
+                const channel = interaction.guild.channels.cache.get(reminderChannelId);
+                if (!channel) {
+                    return await interaction.editReply({
+                        content: '❌ Reminder channel not found! Please reconfigure the reminder channel.',
+                    });
+                }
+
+                // Send test reminder
+                const { EmbedBuilder } = require('discord.js');
+                const testEmbed = new EmbedBuilder()
+                    .setTitle('🧪 Test Reminder')
+                    .setDescription('This is a test reminder to verify the bot is working correctly!')
+                    .setColor('#f39c12')
+                    .addFields(
+                        { name: '📖 Current Book', value: `**${currentBook.title}** by **${currentBook.author}**`, inline: true },
+                        { name: '📢 Channel', value: `${channel}`, inline: true },
+                        { name: '✅ Status', value: 'Bot is working correctly!', inline: true }
+                    )
+                    .setFooter({ text: 'Test reminder sent via /setup test' })
+                    .setTimestamp();
+
+                await channel.send({ embeds: [testEmbed] });
+                await interaction.editReply({
+                    content: `✅ Test reminder sent to ${channel}! The bot is working correctly.`,
+                });
+
             }
 
         } catch (error) {

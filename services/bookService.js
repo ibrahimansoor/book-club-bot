@@ -28,7 +28,7 @@ Please respond with a JSON object containing:
 Make sure the response is valid JSON and focuses on actionable benefits and insights readers can gain.`;
 
             const response = await this.anthropic.messages.create({
-                model: 'claude-3-sonnet-20240229',
+                model: 'claude-3-5-sonnet-20241022',
                 max_tokens: 1000,
                 temperature: 0.3,
                 messages: [
@@ -73,7 +73,7 @@ Make sure the response is valid JSON and focuses on actionable benefits and insi
                 : `Generate 3-5 thought-provoking discussion questions about the book "${bookTitle}". Focus on key themes, practical applications, and personal reflections.`;
 
             const response = await this.anthropic.messages.create({
-                model: 'claude-3-sonnet-20240229',
+                model: 'claude-3-5-sonnet-20241022',
                 max_tokens: 500,
                 temperature: 0.7,
                 messages: [
@@ -119,7 +119,7 @@ Consider:
 Respond with just a number from 1-10.`;
 
             const response = await this.anthropic.messages.create({
-                model: 'claude-3-sonnet-20240229',
+                model: 'claude-3-5-sonnet-20241022',
                 max_tokens: 50,
                 temperature: 0.1,
                 messages: [
@@ -172,7 +172,7 @@ Respond with just a number from 1-10.`;
 Provide practical, achievable reading schedules and discussion prompts for each week. Format as a structured plan.`;
 
             const response = await this.anthropic.messages.create({
-                model: 'claude-3-sonnet-20240229',
+                model: 'claude-3-5-sonnet-20241022',
                 max_tokens: 700,
                 temperature: 0.5,
                 messages: [

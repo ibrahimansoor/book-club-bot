@@ -26,14 +26,16 @@ module.exports = {
             console.log(`Fetching book info for: ${title}${author ? ` by ${author}` : ''}`);
             const bookInfoResult = await interaction.client.bookService.getBookInfo(title, author);
 
-            if (!bookInfoResult.success) {
-                return await interaction.editReply({
-                    content: `⚠️ Could not retrieve detailed information for "${title}". Using basic information instead.`,
-                    ephemeral: true
-                });
-            }
+            let bookData;
+            let usingFallback = false;
 
-            const bookData = bookInfoResult.data;
+            if (!bookInfoResult.success) {
+                console.log('Using fallback book data due to API error');
+                usingFallback = true;
+                bookData = bookInfoResult.data;
+            } else {
+                bookData = bookInfoResult.data;
+            }
 
             // Save book to database
             await interaction.client.db.setCurrentBook(
@@ -47,7 +49,7 @@ module.exports = {
             // Create announcement embed
             const embed = new EmbedBuilder()
                 .setTitle('📚 New Book Club Selection!')
-                .setColor('#3498db')
+                .setColor(usingFallback ? '#e74c3c' : '#3498db')
                 .addFields(
                     { name: '📖 Title', value: bookData.title, inline: true },
                     { name: '✍️ Author', value: bookData.author, inline: true },
@@ -76,23 +78,49 @@ module.exports = {
                 });
             }
 
+            // Add warning if using fallback data
+            if (usingFallback) {
+                embed.addFields({
+                    name: '⚠️ Note',
+                    value: 'Limited book information available due to API issues. The book has been set successfully, but detailed information may be incomplete.',
+                    inline: false
+                });
+            }
+
             await interaction.editReply({ embeds: [embed] });
 
             // Send confirmation to moderator
+            const confirmationMessage = usingFallback 
+                ? `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection! (Limited information due to API issues)`
+                : `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection!`;
+
             await interaction.followUp({
-                content: `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection!`,
+                content: confirmationMessage,
                 ephemeral: true
             });
 
             // Log the action
             console.log(`Book set by ${interaction.user.tag} in ${interaction.guild.name}: ${bookData.title} by ${bookData.author}`);
 
+            // Check if reminder channel is configured
+            const reminderChannel = await interaction.client.db.getReminderChannel(guildId);
+            if (!reminderChannel) {
+                await interaction.followUp({
+                    content: '💡 **Tip:** Use `/setup channels reminders:#your-channel` to configure daily reminders for this book!',
+                    ephemeral: true
+                });
+            }
+
         } catch (error) {
             console.error('Error in setbook command:', error);
             
-            const errorMessage = error.message.includes('API') 
-                ? '❌ There was an issue connecting to the book information service. Please try again later.'
-                : '❌ An error occurred while setting the book. Please try again.';
+            let errorMessage = '❌ An error occurred while setting the book. Please try again.';
+            
+            if (error.message.includes('API') || error.message.includes('anthropic')) {
+                errorMessage = '❌ There was an issue connecting to the book information service. The book has been set with basic information.';
+            } else if (error.message.includes('database')) {
+                errorMessage = '❌ There was an issue saving the book to the database. Please try again.';
+            }
             
             if (interaction.deferred) {
                 await interaction.editReply({ content: errorMessage, ephemeral: true });
