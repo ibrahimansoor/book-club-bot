@@ -26,6 +26,14 @@ module.exports = {
                     { name: '📝 Description', value: currentBook.description || 'No description available', inline: false }
                 );
 
+                if (currentBook.current_chapter) {
+                    embed.addFields({
+                        name: '📖 Current Chapter',
+                        value: `**${currentBook.current_chapter}** - Bring your notes to Thursday's discussion!`,
+                        inline: false
+                    });
+                }
+
                 if (currentBook.benefits) {
                     embed.addFields({
                         name: '🎯 Benefits',

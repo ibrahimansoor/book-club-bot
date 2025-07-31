@@ -40,6 +40,7 @@ class Database {
                 author TEXT NOT NULL,
                 description TEXT,
                 benefits TEXT,
+                current_chapter TEXT,
                 start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT 1,
                 FOREIGN KEY (guild_id) REFERENCES guild_settings (guild_id)
@@ -189,18 +190,23 @@ class Database {
     }
 
     // Book Management Methods
-    async setCurrentBook(guildId, title, author, description, benefits) {
+    async setCurrentBook(guildId, title, author, description, benefits, chapter = null) {
         // Deactivate current book
         await this.run(`UPDATE current_books SET is_active = 0 WHERE guild_id = ? AND is_active = 1`, [guildId]);
         
         // Add new book
-        const sql = `INSERT INTO current_books (guild_id, title, author, description, benefits) VALUES (?, ?, ?, ?, ?)`;
-        return await this.run(sql, [guildId, title, author, description, benefits]);
+        const sql = `INSERT INTO current_books (guild_id, title, author, description, benefits, current_chapter) VALUES (?, ?, ?, ?, ?, ?)`;
+        return await this.run(sql, [guildId, title, author, description, benefits, chapter]);
     }
 
     async getCurrentBook(guildId) {
         const sql = `SELECT * FROM current_books WHERE guild_id = ? AND is_active = 1 ORDER BY start_date DESC LIMIT 1`;
         return await this.get(sql, [guildId]);
+    }
+
+    async updateCurrentChapter(guildId, chapter) {
+        const sql = `UPDATE current_books SET current_chapter = ? WHERE guild_id = ? AND is_active = 1`;
+        return await this.run(sql, [chapter, guildId]);
     }
 
     // User Engagement Methods

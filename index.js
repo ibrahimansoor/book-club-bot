@@ -145,8 +145,8 @@ function setupScheduledTasks() {
         await sendDailyReminder();
     });
     
-    // Thursday book club reminder at 6 PM
-    cron.schedule('0 18 * * 4', async () => {
+    // Thursday book club reminder at 9 AM
+    cron.schedule('0 9 * * 4', async () => {
         console.log('📚 Running Thursday book club reminder...');
         await sendThursdayBookClubReminder();
     });
@@ -181,9 +181,11 @@ async function sendDailyReminder() {
                 if (channel) {
                     console.log(`📤 Sending daily reminder to channel: ${channel.name}`);
                     
+                    const chapterInfo = currentBook.current_chapter ? `\n📖 **Current Chapter:** ${currentBook.current_chapter}` : '';
+                    
                     const embed = new EmbedBuilder()
                         .setTitle('📚 Daily Reading Reminder')
-                        .setDescription(`Don't forget to read **${currentBook.title}** by **${currentBook.author}** today!`)
+                        .setDescription(`Don't forget to read **${currentBook.title}** by **${currentBook.author}** today!${chapterInfo}`)
                         .setColor('#3498db')
                         .addFields(
                             { name: '📖 Current Progress', value: 'Share your thoughts and takeaways!', inline: true },
@@ -229,13 +231,16 @@ async function sendThursdayBookClubReminder() {
                 if (channel) {
                     console.log(`📤 Sending Thursday reminder to channel: ${channel.name}`);
                     
+                    const chapterInfo = currentBook.current_chapter ? `\n📖 **Current Chapter:** ${currentBook.current_chapter}` : '';
+                    
                     const embed = new EmbedBuilder()
                         .setTitle('📚 Thursday Book Club Reminder!')
-                        .setDescription(`It's Thursday! Time for our book club discussion! 📖`)
+                        .setDescription(`It's Thursday! Time for our book club discussion! 📖${chapterInfo}`)
                         .setColor('#e74c3c')
                         .addFields(
                             { name: '📖 Current Book', value: `**${currentBook.title}** by **${currentBook.author}**`, inline: true },
                             { name: '🕕 Time', value: 'Join us for our weekly discussion!', inline: true },
+                            { name: '📝 Bring Your Notes', value: 'Come prepared with your insights, questions, and takeaways from this week\'s reading!', inline: false },
                             { name: '💬 Discussion', value: 'Share your thoughts, questions, and insights about this week\'s reading!', inline: false }
                         )
                         .setFooter({ text: 'Happy Reading and Discussing! 📚' })

@@ -12,6 +12,10 @@ module.exports = {
             option.setName('author')
                 .setDescription('The author of the book')
                 .setRequired(false))
+        .addStringOption(option =>
+            option.setName('chapter')
+                .setDescription('Current chapter being read (e.g., "Chapter 3" or "Chapters 5-7")')
+                .setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction) {
@@ -20,6 +24,7 @@ module.exports = {
 
             const title = interaction.options.getString('title');
             const author = interaction.options.getString('author');
+            const chapter = interaction.options.getString('chapter');
             const guildId = interaction.guild.id;
 
             // Get book information from AI
@@ -37,13 +42,14 @@ module.exports = {
                 bookData = bookInfoResult.data;
             }
 
-            // Save book to database
+            // Save book to database with chapter info
             await interaction.client.db.setCurrentBook(
                 guildId,
                 bookData.title,
                 bookData.author,
                 bookData.description,
-                bookData.benefits
+                bookData.benefits,
+                chapter
             );
 
             // Create announcement embed
@@ -59,6 +65,15 @@ module.exports = {
                 )
                 .setFooter({ text: 'Start reading and share your takeaways!' })
                 .setTimestamp();
+
+            // Add current chapter if specified
+            if (chapter) {
+                embed.addFields({
+                    name: '📖 Current Chapter',
+                    value: `**${chapter}** - Bring your notes to Thursday's discussion!`,
+                    inline: false
+                });
+            }
 
             // Add themes if available
             if (bookData.themes && bookData.themes.length > 0) {
@@ -91,8 +106,8 @@ module.exports = {
 
             // Send confirmation to moderator
             const confirmationMessage = usingFallback 
-                ? `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection! (Limited information due to API issues)`
-                : `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection!`;
+                ? `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection!${chapter ? ` Current chapter: ${chapter}` : ''} (Limited information due to API issues)`
+                : `✅ Successfully set "${bookData.title}" by ${bookData.author} as the current book club selection!${chapter ? ` Current chapter: ${chapter}` : ''}`;
 
             await interaction.followUp({
                 content: confirmationMessage,
@@ -100,13 +115,13 @@ module.exports = {
             });
 
             // Log the action
-            console.log(`Book set by ${interaction.user.tag} in ${interaction.guild.name}: ${bookData.title} by ${bookData.author}`);
+            console.log(`Book set by ${interaction.user.tag} in ${interaction.guild.name}: ${bookData.title} by ${bookData.author}${chapter ? ` - Chapter: ${chapter}` : ''}`);
 
             // Check if reminder channel is configured
             const reminderChannel = await interaction.client.db.getReminderChannel(guildId);
             if (!reminderChannel) {
                 await interaction.followUp({
-                    content: '💡 **Tip:** Use `/setup channels reminders:#your-channel` to configure daily reminders for this book!',
+                    content: '💡 **Tip:** Use `/setup channels reminders:#book-club` to configure daily reminders for this book!',
                     ephemeral: true
                 });
             }
